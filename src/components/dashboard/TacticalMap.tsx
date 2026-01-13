@@ -1,6 +1,7 @@
 import { useState, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Minus, Compass, Navigation2, Bike, Target } from 'lucide-react';
+import { Plus, Minus, Compass, Navigation2, Fence, Target, Video } from 'lucide-react';
+import DroneFeedModal from './DroneFeedModal';
 
 interface CrowdDot {
   id: number;
@@ -94,6 +95,7 @@ const TacticalMap = ({ userPosition, targetPosition, isNavigating }: TacticalMap
   const [zoom, setZoom] = useState(1);
   const [isHeadsUp, setIsHeadsUp] = useState(false);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [showDroneFeed, setShowDroneFeed] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -270,10 +272,10 @@ const TacticalMap = ({ userPosition, targetPosition, isNavigating }: TacticalMap
           transition={{ delay: 0.5, type: 'spring' }}
         >
           <div className="flex items-center justify-center w-8 h-8 rounded-full bg-alert/90 border-2 border-alert">
-            <Bike className="w-4 h-4 text-alert-foreground" />
+            <Fence className="w-4 h-4 text-alert-foreground" />
           </div>
           <span className="mt-1 px-1.5 py-0.5 bg-background/80 rounded text-[10px] font-bold text-alert tracking-wider">
-            OBSTACLE
+            FENCE
           </span>
         </motion.div>
 
@@ -370,6 +372,15 @@ const TacticalMap = ({ userPosition, targetPosition, isNavigating }: TacticalMap
         <Navigation2 className="w-5 h-5" style={{ transform: isHeadsUp ? 'rotate(0deg)' : 'rotate(-45deg)' }} />
       </button>
 
+      {/* Drone Feed Button */}
+      <button
+        onClick={() => setShowDroneFeed(true)}
+        className="absolute top-4 left-16 glass-card px-3 h-10 flex items-center gap-2 text-foreground hover:bg-muted/50 transition-colors"
+      >
+        <Video className="w-4 h-4 text-primary" />
+        <span className="text-xs font-semibold tracking-wide">DRONE</span>
+      </button>
+
       {/* Compass */}
       <motion.div
         className="absolute top-4 right-4 glass-card w-12 h-12 flex items-center justify-center"
@@ -399,6 +410,9 @@ const TacticalMap = ({ userPosition, targetPosition, isNavigating }: TacticalMap
           </div>
         </div>
       </div>
+
+      {/* Drone Feed Modal */}
+      <DroneFeedModal isOpen={showDroneFeed} onClose={() => setShowDroneFeed(false)} />
     </div>
   );
 };

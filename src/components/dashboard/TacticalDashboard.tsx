@@ -16,7 +16,7 @@ const TacticalDashboard = () => {
 
   // Dummy data
   const dashboardData = {
-    obstacle: { type: 'OBSTACLE', name: 'BIKE RACK' },
+    obstacle: { type: 'OBSTACLE', name: 'FENCE' },
     eta: '7 min',
     nextTurn: { direction: 'TURN LEFT', distance: '150m' },
     patient: { gender: 'Male', age: '30y', condition: 'Head Injury' },
