@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Minus, Compass, Navigation2, Bike, MapPin, Target, TriangleAlert } from 'lucide-react';
+import { useState, useRef, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { Plus, Minus, Compass, Navigation2, Bike, Target } from 'lucide-react';
 
 interface CrowdDot {
   id: number;
@@ -16,12 +16,79 @@ interface TeamMarker {
   label: string;
 }
 
+interface HeatmapZone {
+  id: number;
+  cx: number;
+  cy: number;
+  rx: number;
+  ry: number;
+  intensity: number;
+}
+
 interface TacticalMapProps {
   userPosition: { x: number; y: number };
   targetPosition: { x: number; y: number };
   onPositionUpdate?: (pos: { x: number; y: number }) => void;
   isNavigating: boolean;
 }
+
+// Generate static crowd dots with clustering in specific areas
+const generateClusteredDots = (): CrowdDot[] => {
+  const dots: CrowdDot[] = [];
+  let id = 0;
+
+  // High density cluster 1 - near center plaza
+  for (let i = 0; i < 25; i++) {
+    dots.push({
+      id: id++,
+      x: 50 + (Math.random() - 0.5) * 15,
+      y: 45 + (Math.random() - 0.5) * 12,
+      delay: Math.random() * 2,
+    });
+  }
+
+  // High density cluster 2 - upper right area
+  for (let i = 0; i < 18; i++) {
+    dots.push({
+      id: id++,
+      x: 72 + (Math.random() - 0.5) * 12,
+      y: 35 + (Math.random() - 0.5) * 10,
+      delay: Math.random() * 2,
+    });
+  }
+
+  // Medium density cluster - lower left
+  for (let i = 0; i < 10; i++) {
+    dots.push({
+      id: id++,
+      x: 30 + (Math.random() - 0.5) * 10,
+      y: 65 + (Math.random() - 0.5) * 8,
+      delay: Math.random() * 2,
+    });
+  }
+
+  // Sparse dots along path
+  for (let i = 0; i < 8; i++) {
+    dots.push({
+      id: id++,
+      x: 35 + Math.random() * 10,
+      y: 40 + Math.random() * 20,
+      delay: Math.random() * 2,
+    });
+  }
+
+  return dots;
+};
+
+// Static heatmap zones
+const HEATMAP_ZONES: HeatmapZone[] = [
+  { id: 1, cx: 50, cy: 45, rx: 12, ry: 10, intensity: 0.4 },
+  { id: 2, cx: 72, cy: 35, rx: 10, ry: 8, intensity: 0.35 },
+  { id: 3, cx: 30, cy: 65, rx: 8, ry: 6, intensity: 0.25 },
+];
+
+// Static crowd dots - only generated once
+const STATIC_CROWD_DOTS = generateClusteredDots();
 
 const TacticalMap = ({ userPosition, targetPosition, isNavigating }: TacticalMapProps) => {
   const [zoom, setZoom] = useState(1);
@@ -31,13 +98,8 @@ const TacticalMap = ({ userPosition, targetPosition, isNavigating }: TacticalMap
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
-  // Crowd density dots
-  const crowdDots: CrowdDot[] = Array.from({ length: 60 }, (_, i) => ({
-    id: i,
-    x: 35 + Math.random() * 50,
-    y: 25 + Math.random() * 55,
-    delay: Math.random() * 2,
-  }));
+  // Use memoized static dots
+  const crowdDots = useMemo(() => STATIC_CROWD_DOTS, []);
 
   // Other team markers
   const teamMarkers: TeamMarker[] = [
@@ -61,11 +123,6 @@ const TacticalMap = ({ userPosition, targetPosition, isNavigating }: TacticalMap
 
   const handleMouseUp = () => setIsDragging(false);
 
-  // Path points for the navigation curve
-  const pathD = `M ${userPosition.x}% ${userPosition.y}% 
-                 Q ${userPosition.x - 5}% ${userPosition.y - 20}%, ${userPosition.x - 10}% ${userPosition.y - 35}%
-                 Q ${userPosition.x - 15}% ${userPosition.y - 50}%, ${targetPosition.x}% ${targetPosition.y}%`;
-
   return (
     <div className="relative h-full w-full overflow-hidden rounded-xl bg-secondary/50 border border-border/50">
       {/* Map Container */}
@@ -85,6 +142,23 @@ const TacticalMap = ({ userPosition, targetPosition, isNavigating }: TacticalMap
         {/* Grid Pattern Background */}
         <div className="absolute inset-0 grid-pattern opacity-60" />
 
+        {/* Roads / Streets SVG */}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+          {/* Main roads */}
+          <path d="M 0 50 L 100 50" stroke="hsl(var(--muted-foreground))" strokeWidth="0.8" opacity="0.3" fill="none" />
+          <path d="M 50 0 L 50 100" stroke="hsl(var(--muted-foreground))" strokeWidth="0.8" opacity="0.3" fill="none" />
+          <path d="M 15 20 L 40 55 L 85 75" stroke="hsl(var(--muted-foreground))" strokeWidth="0.6" opacity="0.25" fill="none" />
+          <path d="M 10 80 L 45 60 L 90 40" stroke="hsl(var(--muted-foreground))" strokeWidth="0.6" opacity="0.25" fill="none" />
+          
+          {/* Building outlines */}
+          <rect x="55" y="20" width="15" height="12" fill="none" stroke="hsl(var(--border))" strokeWidth="0.4" opacity="0.5" />
+          <rect x="58" y="55" width="20" height="15" fill="none" stroke="hsl(var(--border))" strokeWidth="0.4" opacity="0.5" />
+          <rect x="20" y="25" width="10" height="10" fill="none" stroke="hsl(var(--border))" strokeWidth="0.4" opacity="0.5" />
+          <rect x="75" y="60" width="12" height="18" fill="none" stroke="hsl(var(--border))" strokeWidth="0.4" opacity="0.5" />
+          <rect x="15" y="70" width="18" height="10" fill="none" stroke="hsl(var(--border))" strokeWidth="0.4" opacity="0.5" />
+          <polygon points="40,15 48,15 48,28 42,28 42,22 40,22" fill="none" stroke="hsl(var(--border))" strokeWidth="0.4" opacity="0.5" />
+        </svg>
+
         {/* Street Labels */}
         <div className="absolute top-[18%] left-[8%] text-muted-foreground/40 text-xs font-medium tracking-wider rotate-[-30deg]">
           Brienner str.
@@ -93,8 +167,30 @@ const TacticalMap = ({ userPosition, targetPosition, isNavigating }: TacticalMap
           Odeonsplatz
         </div>
 
-        {/* Map Area Overlay */}
-        <div className="absolute top-[15%] left-[30%] w-[55%] h-[65%] bg-muted/30 rounded-lg border border-border/30" />
+        {/* Crowd Heatmap Zones */}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <defs>
+            <radialGradient id="heatGradient1" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity="0.5" />
+              <stop offset="60%" stopColor="hsl(var(--destructive))" stopOpacity="0.2" />
+              <stop offset="100%" stopColor="hsl(var(--destructive))" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="heatGradient2" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity="0.45" />
+              <stop offset="60%" stopColor="hsl(var(--destructive))" stopOpacity="0.15" />
+              <stop offset="100%" stopColor="hsl(var(--destructive))" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="heatGradient3" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity="0.3" />
+              <stop offset="60%" stopColor="hsl(var(--destructive))" stopOpacity="0.1" />
+              <stop offset="100%" stopColor="hsl(var(--destructive))" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+          {/* Heatmap ellipses */}
+          <ellipse cx="50" cy="45" rx="14" ry="12" fill="url(#heatGradient1)" />
+          <ellipse cx="72" cy="35" rx="12" ry="10" fill="url(#heatGradient2)" />
+          <ellipse cx="30" cy="65" rx="10" ry="8" fill="url(#heatGradient3)" />
+        </svg>
 
         {/* Crowd Density Dots */}
         {crowdDots.map((dot) => (
@@ -292,6 +388,10 @@ const TacticalMap = ({ userPosition, targetPosition, isNavigating }: TacticalMap
           <div className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full bg-destructive" />
             <span className="text-muted-foreground">Crowd</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 h-2 rounded-sm bg-destructive/40" />
+            <span className="text-muted-foreground">High Density</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full bg-info" />
